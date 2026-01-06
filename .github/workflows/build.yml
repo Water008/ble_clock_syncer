@@ -29,6 +29,12 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Setup Gradle mirrors
+        run: |
+          mkdir -p ~/.gradle
+          cp android/gradle/init.gradle ~/.gradle/init.gradle
+          echo "Gradle init script configured for Aliyun mirrors"
+
       - name: Get dependencies
         run: flutter pub get
 
