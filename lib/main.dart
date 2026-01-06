@@ -364,40 +364,42 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
             left: 20,
             right: 20,
           ),
-          width: null,
-          constraints: const BoxConstraints(
-            minWidth: 100,
-            maxWidth: 280,
-            minHeight: 48,
-          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
           elevation: 4,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: EdgeInsets.zero,
           backgroundColor: backgroundColor,
           duration: const Duration(seconds: 2),
-          content: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                iconData,
-                color: iconColor,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  message,
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 14,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+          content: Container(
+            constraints: const BoxConstraints(
+              minWidth: 100,
+              maxWidth: 280,
+              minHeight: 48,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  iconData,
+                  color: iconColor,
+                  size: 20,
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    message,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 14,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
