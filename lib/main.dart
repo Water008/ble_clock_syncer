@@ -34,10 +34,9 @@ class BluetoothManager {
   BluetoothCharacteristic? _characteristic;
   bool _isScanning = false;
   bool _isConnected = false;
-  Timer? _scanTimer;
   StreamSubscription? _scanSubscription;
   DateTime? _scanStartTime;
-  const Duration _scanDuration = Duration(seconds: 15);
+  static const Duration _scanDuration = Duration(seconds: 15);
   final Function(String, LogType) _logCallback;
   final Function(bool) _connectionStatusCallback;
   final Function(String) _deviceNameCallback;
