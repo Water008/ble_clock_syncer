@@ -36,6 +36,8 @@ class BluetoothManager {
   bool _isConnected = false;
   Timer? _scanTimer;
   StreamSubscription? _scanSubscription;
+  DateTime? _scanStartTime;
+  const Duration _scanDuration = Duration(seconds: 15);
   final Function(String, LogType) _logCallback;
   final Function(bool) _connectionStatusCallback;
   final Function(String) _deviceNameCallback;
@@ -86,23 +88,9 @@ class BluetoothManager {
 
     try {
       _isScanning = true;
+      _scanStartTime = DateTime.now();
 
-      await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
-
-      // Progress tracking
-      DateTime scanStart = DateTime.now();
-      const scanDuration = Duration(seconds: 15);
-
-      _scanTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-        final elapsed = DateTime.now().difference(scanStart);
-        final progress = (elapsed.inMilliseconds / scanDuration.inMilliseconds * 100).clamp(0, 100).toInt();
-
-        if (progress >= 100) {
-          timer.cancel();
-          _scanTimer = null;
-          _isScanning = false;
-        }
-      });
+      await FlutterBluePlus.startScan(timeout: _scanDuration);
 
       // Don't log device discoveries to keep logs clean
       _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
@@ -110,8 +98,7 @@ class BluetoothManager {
       });
     } catch (e) {
       _isScanning = false;
-      _scanTimer?.cancel();
-      _scanTimer = null;
+      _scanStartTime = null;
       _logCallback('扫描失败: ${e.toString()}', LogType.error);
     }
   }
@@ -120,18 +107,16 @@ class BluetoothManager {
     try {
       if (_isScanning) {
         await FlutterBluePlus.stopScan();
-        _scanTimer?.cancel();
-        _scanTimer = null;
         _scanSubscription?.cancel();
         _scanSubscription = null;
         _isScanning = false;
+        _scanStartTime = null;
       }
     } catch (e) {
       _isScanning = false;
-      _scanTimer?.cancel();
-      _scanTimer = null;
       _scanSubscription?.cancel();
       _scanSubscription = null;
+      _scanStartTime = null;
     }
   }
 
@@ -278,6 +263,18 @@ class BluetoothManager {
       syncTime.year - 2000,
     ]);
   }
+
+  double get scanProgress {
+    if (!_isScanning || _scanStartTime == null) {
+      return _isScanning ? 100.0 : 0.0;
+    }
+
+    final elapsed = DateTime.now().difference(_scanStartTime!);
+    final progress = (elapsed.inMilliseconds / _scanDuration.inMilliseconds * 100).clamp(0, 100).toDouble();
+
+    return progress;
+  }
+
   bool get isConnected => _isConnected;
   bool get isScanning => _isScanning;
 }
@@ -352,6 +349,13 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.only(
+            bottom: MediaQuery.of(context).size.height - 100,
+            left: 20,
+            right: 20,
+          ),
+          width: 400,
           content: Text(
             message,
             style: TextStyle(color: textColor),
@@ -395,21 +399,10 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
             const Spacer(),
             if (_isScanning)
               StreamBuilder<int>(
-                stream: Stream.periodic(const Duration(milliseconds: 100), (_) {
-                  if (_bluetoothManager.isScanning) {
-                    return DateTime.now().difference(DateTime(2025, 1, 6)).inSeconds % 100;
-                  }
-                  return 100;
-                }).asyncMap((_) async {
-                  await Future.delayed(const Duration(milliseconds: 50));
-                  return 0;
-                }),
+                stream: Stream.periodic(const Duration(milliseconds: 100), (_) => 0),
                 initialData: 0,
                 builder: (context, snapshot) {
-                  // Use a simple counter based on time
-                  final progress = _isScanning
-                      ? (DateTime.now().millisecond + (DateTime.now().second * 1000)) % 1500 / 15
-                      : 100;
+                  final progress = _bluetoothManager.scanProgress;
                   return Text('扫描中... ${progress.toInt()}%',
                     style: const TextStyle(fontSize: 12, color: Colors.grey));
                 },
@@ -427,9 +420,7 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
                   child: StreamBuilder<int>(
                     stream: Stream.periodic(const Duration(milliseconds: 100), (_) => 0),
                     builder: (context, snapshot) {
-                      final progress = _isScanning
-                          ? (DateTime.now().millisecond + (DateTime.now().second * 1000)) % 1500 / 15
-                          : 100;
+                      final progress = _bluetoothManager.scanProgress;
                       return LinearProgressIndicator(value: progress / 100);
                     },
                   ),
