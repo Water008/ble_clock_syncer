@@ -212,11 +212,20 @@ class BluetoothManager {
 
     try {
       _logCallback('正在发送重启命令...', LogType.info);
+      _logCallback('特征值 UUID: ${_characteristic!.uuid}', LogType.info);
+      _logCallback('特征值支持写入: ${_characteristic!.properties.write}', LogType.info);
 
       final restartCommand = Uint8List.fromList([0xA6]);
-      await _characteristic!.write(restartCommand);
+      _logCallback('发送数据: A6', LogType.info);
 
-      _logCallback('重启命令已发送', LogType.success);
+      try {
+        await _characteristic!.write(restartCommand);
+        _logCallback('重启命令已发送', LogType.success);
+      } catch (writeError) {
+        // 写入失败可能是设备已重启断开连接
+        _logCallback('写入异常（可能设备已重启）: ${writeError.toString()}', LogType.warning);
+        _logCallback('重启命令已尝试发送', LogType.success);
+      }
 
       await Future.delayed(const Duration(seconds: 2));
 
@@ -225,7 +234,7 @@ class BluetoothManager {
         await disconnect();
       } catch (e) {
         // 断开连接失败不影响重启成功的判断
-        _logCallback('设备已重启', LogType.info);
+        _logCallback('设备已重启，连接已断开', LogType.info);
       }
     } catch (e) {
       _logCallback('重启失败: ${e.toString()}', LogType.error);
