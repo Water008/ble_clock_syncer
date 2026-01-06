@@ -46,7 +46,8 @@ class BluetoothManager {
     required Function(String) deviceNameCallback,
   })  : _logCallback = logCallback,
         _connectionStatusCallback = connectionStatusCallback,
-        _deviceNameCallback = deviceNameCallback,
+        _deviceNameCallback = deviceNameCallback;
+
   Future<bool> requestPermissions() async {
     try {
       _logCallback('正在请求蓝牙和位置权限...', LogType.info);
@@ -91,11 +92,11 @@ class BluetoothManager {
       // Progress tracking
       DateTime scanStart = DateTime.now();
       const scanDuration = Duration(seconds: 15);
-      
+
       _scanTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
         final elapsed = DateTime.now().difference(scanStart);
         final progress = (elapsed.inMilliseconds / scanDuration.inMilliseconds * 100).clamp(0, 100).toInt();
-        
+
         if (progress >= 100) {
           timer.cancel();
           _scanTimer = null;
@@ -295,6 +296,8 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
   final TextEditingController _offsetController = TextEditingController(text: '0');
 
   bool _isConnected = false;
+  Timer? _scanTimer;
+  StreamSubscription? _scanSubscription;
   String _deviceName = '--';
   bool _isScanning = false;
 
@@ -328,7 +331,7 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
   void _addLog(String message, LogType type) {
     Color backgroundColor;
     Color textColor;
-    
+
     switch (type) {
       case LogType.info:
         backgroundColor = Colors.blue.shade100;
@@ -347,7 +350,7 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
         textColor = Colors.red.shade900;
         break;
     }
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -393,8 +396,26 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
             const Text('选择设备'),
             const Spacer(),
             if (_isScanning)
-              Text('扫描中...', 
-                style: const TextStyle(fontSize: 12, color: Colors.grey))
+              StreamBuilder<int>(
+                stream: Stream.periodic(const Duration(milliseconds: 100), (_) {
+                  if (_bluetoothManager.isScanning) {
+                    return DateTime.now().difference(DateTime(2025, 1, 6)).inSeconds % 100;
+                  }
+                  return 100;
+                }).asyncMap((_) async {
+                  await Future.delayed(const Duration(milliseconds: 50));
+                  return 0;
+                }),
+                initialData: 0,
+                builder: (context, snapshot) {
+                  // Use a simple counter based on time
+                  final progress = _isScanning
+                      ? (DateTime.now().millisecond + (DateTime.now().second * 1000)) % 1500 / 15
+                      : 100;
+                  return Text('扫描中... ${progress.toInt()}%',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey));
+                },
+              )
           ],
         ),
         content: SizedBox(
@@ -405,7 +426,15 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
               if (_isScanning)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: LinearProgressIndicator(),
+                  child: StreamBuilder<int>(
+                    stream: Stream.periodic(const Duration(milliseconds: 100), (_) => 0),
+                    builder: (context, snapshot) {
+                      final progress = _isScanning
+                          ? (DateTime.now().millisecond + (DateTime.now().second * 1000)) % 1500 / 15
+                          : 100;
+                      return LinearProgressIndicator(value: progress / 100);
+                    },
+                  ),
                 ),
               Expanded(
                 child: StreamBuilder<List<ScanResult>>(
@@ -413,7 +442,7 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
                   initialData: const [],
                   builder: (context, snapshot) {
                     if (snapshot.data == null || snapshot.data!.isEmpty) {
-                      return Center(child: Text(_isScanning ? '正在搜索设备...' : '未发现设备'));
+                      return const Center(child: Text(_isScanning ? '正在搜索设备...' : '未发现设备'));
                     }
 
                     return ListView.builder(
@@ -423,7 +452,7 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
                         final deviceName = result.device.platformName.isNotEmpty
                             ? result.device.platformName
                             : '未知设备';
-                        
+
                         // Signal strength color
                         Color signalColor;
                         String signalText;
@@ -459,108 +488,7 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
                             children: [
                               Text('${result.rssi} dBm', style: const TextStyle(fontSize: 12)),
                               const SizedBox(width: 4),
-                              Text('|  void _showDeviceList() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            const Text('选择设备'),
-            const Spacer(),
-            if (_isScanning)
-              StreamBuilder<int>(
-                stream: Stream.periodic(const Duration(milliseconds: 100), (_) {
-                  if (_bluetoothManager.isScanning) {
-                    return DateTime.now().difference(DateTime(2025, 1, 6)).inSeconds % 100;
-                  }
-                  return 100;
-                }).asyncMap((_) async {
-                  await Future.delayed(const Duration(milliseconds: 50));
-                  return 0;
-                }),
-                initialData: 0,
-                builder: (context, snapshot) {
-                  // Use a simple counter based on time
-                  final progress = _isScanning 
-                      ? (DateTime.now().millisecond + (DateTime.now().second * 1000)) % 1500 / 15 
-                      : 100;
-                  return Text('扫描中... ${progress.toInt()}%',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey));
-                },
-              )
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          height: 350,
-          child: Column(
-            children: [
-              if (_isScanning)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: StreamBuilder<int>(
-                    stream: Stream.periodic(const Duration(milliseconds: 100), (_) => 0),
-                    builder: (context, snapshot) {
-                      final progress = _isScanning 
-                          ? (DateTime.now().millisecond + (DateTime.now().second * 1000)) % 1500 / 15 
-                          : 100;
-                      return LinearProgressIndicator(value: progress / 100);
-                    },
-                  ),
-                ),
-              Expanded(
-                child: StreamBuilder<List<ScanResult>>(
-                  stream: FlutterBluePlus.scanResults,
-                  initialData: const [],
-                  builder: (context, snapshot) {
-                    if (snapshot.data == null || snapshot.data!.isEmpty) {
-                      return const Center(child: Text(_isScanning ? '正在搜索设备...' : '未发现设备'));
-                    }
-
-                    return ListView.builder(
-                      itemCount: snapshot.data!.length,
-                      itemBuilder: (context, index) {
-                        final result = snapshot.data![index];
-                        final deviceName = result.device.platformName.isNotEmpty
-                            ? result.device.platformName
-                            : '未知设备';
-                        
-                        // Signal strength color
-                        Color signalColor;
-                        String signalText;
-                        if (result.rssi >= -60) {
-                          signalColor = Colors.green;
-                          signalText = '强';
-                        } else if (result.rssi >= -75) {
-                          signalColor = Colors.yellow[700] ?? Colors.yellow;
-                          signalText = '中';
-                        } else if (result.rssi >= -90) {
-                          signalColor = Colors.orange;
-                          signalText = '弱';
-                        } else {
-                          signalColor = Colors.red;
-                          signalText = '极弱';
-                        }
-
-                        return ListTile(
-                          leading: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: signalColor.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              Icons.bluetooth,
-                              color: signalColor,
-                            ),
-                          ),
-                          title: Text(deviceName),
-                          subtitle: Row(
-                            children: [
-                              Text('${result.rssi} dBm', style: const TextStyle(fontSize: 12)),
-                              const SizedBox(width:4),
-                              Text('| $signalText', 
+                              Text('| $signalText',
                                 style: TextStyle(fontSize: 12, color: signalColor)),
                             ],
                           ),
@@ -636,13 +564,6 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
       _offsetController.text = '0';
     });
     _addLog('时间偏移已清零', LogType.info);
-  }
-
-  void _clearLogs() {
-    setState(() {
-      _logs.clear();
-    });
-    _addLog('日志已清空', LogType.info);
   }
 
   @override
@@ -738,6 +659,15 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
                 backgroundColor: Colors.grey.shade600,
               ),
             ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: _isConnected ? _restartDevice : null,
+              icon: const Icon(Icons.refresh),
+              label: const Text('重启设备'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+            ),
           ],
         ),
       ),
@@ -787,97 +717,4 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
       ),
     );
   }
-
-
-  Widget _buildLogSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('📋 操作日志', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                TextButton(
-                  onPressed: _clearLogs,
-                  child: const Text('清空日志'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Container(
-              constraints: const BoxConstraints(maxHeight: 300),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: ListView.builder(
-                controller: _logScrollController,
-                itemCount: _logs.length,
-                itemBuilder: (context, index) {
-                  final log = _logs[index];
-                  return _buildLogItem(log);
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLogItem(LogEntry log) {
-    Color textColor;
-    switch (log.type) {
-      case LogType.info:
-        textColor = Colors.black;
-        break;
-      case LogType.success:
-        textColor = Colors.green;
-        break;
-      case LogType.warning:
-        textColor = Colors.orange;
-        break;
-      case LogType.error:
-        textColor = Colors.red;
-        break;
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            DateFormat('HH:mm:ss').format(log.timestamp),
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              log.message,
-              style: TextStyle(color: textColor, fontSize: 13),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class LogEntry {
-  final String message;
-  final LogType type;
-  final DateTime timestamp;
-
-  LogEntry({
-    required this.message,
-    required this.type,
-    required this.timestamp,
-  });
 }
