@@ -1,4 +1,4 @@
-// Global init script: Block ALL Maven Central repositories
+// Apply global block script to intercept and remove Maven Central repositories
 allprojects {
     repositories {
         all { ArtifactRepository repo ->
