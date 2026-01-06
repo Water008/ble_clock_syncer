@@ -21,6 +21,6 @@ gradle.beforeProject { project ->
         maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
         maven { url 'https://jitpack.io' }
         google()
-        mavenCentral()
+        // Do NOT add mavenCentral() to avoid 403 errors in GitHub Actions
     }
 }
