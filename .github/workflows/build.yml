@@ -15,7 +15,6 @@ jobs:
     env:
       # Disable Maven Central access to avoid 403 errors in GitHub Actions
       GRADLE_OPTS: "-Dorg.gradle.dependency.verification.mode=off"
-      GRADLE_USER_HOME: "${{ github.workspace }}/.gradle"
       # Block Maven Central URLs to prevent any access attempts
       NO_MAVEN_CENTRAL: "true"
       # Force disable Maven Central repositories
@@ -40,10 +39,11 @@ jobs:
 
       - name: Setup Gradle mirrors
         run: |
-          mkdir -p ${{ github.workspace }}/.gradle
-          cp android/gradle/init.gradle ${{ github.workspace }}/.gradle/init.gradle
+          mkdir -p $HOME/.gradle/init.d
+          cp android/gradle/init.gradle $HOME/.gradle/init.d/mirrors.gradle
           echo "Gradle init script configured for Aliyun mirrors"
-          echo "Created Gradle home at ${{ github.workspace }}/.gradle"
+          echo "Init script location: $HOME/.gradle/init.d/mirrors.gradle"
+          cat $HOME/.gradle/init.d/mirrors.gradle
 
       - name: Get dependencies
         run: flutter pub get
