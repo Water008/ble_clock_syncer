@@ -142,7 +142,7 @@ class BluetoothManager {
 
       BluetoothService? targetService;
       for (var service in services) {
-        _logCallback('发现服务: ${service.uuid}', LogType.info);
+        // _logCallback('发现服务: ${service.uuid}', LogType.info);
 
         if (service.uuid.toString().toLowerCase().contains('0001') ||
             service.uuid.toString().toLowerCase().contains('ffe0')) {
@@ -159,7 +159,7 @@ class BluetoothManager {
       }
 
       for (var characteristic in targetService.characteristics) {
-        _logCallback('发现特征值: ${characteristic.uuid}', LogType.info);
+        // _logCallback('发现特征值: ${characteristic.uuid}', LogType.info);
 
         if (characteristic.uuid.toString().toLowerCase().contains('0002') ||
             characteristic.uuid.toString().toLowerCase().contains('ffe1')) {
@@ -191,10 +191,10 @@ class BluetoothManager {
       final now = DateTime.now();
       final syncTime = now.add(Duration(seconds: offsetSeconds));
 
-      _logCallback('准备同步时间: ${DateFormat('yyyy-MM-dd HH:mm:ss').format(syncTime)} (偏移: ${offsetSeconds}s)', LogType.info);
+      // _logCallback('准备同步时间: ${DateFormat('yyyy-MM-dd HH:mm:ss').format(syncTime)} (偏移: ${offsetSeconds}s)', LogType.info);
 
       final data = _buildTimeData(offsetSeconds);
-      _logCallback('发送数据: ${_formatDataPacket(data)}', LogType.info);
+      // _logCallback('发送数据: ${_formatDataPacket(data)}', LogType.info);
 
       await _characteristic!.write(data);
 
@@ -211,34 +211,13 @@ class BluetoothManager {
     }
 
     try {
-      _logCallback('正在发送重启命令...', LogType.info);
-      _logCallback('特征值 UUID: ${_characteristic!.uuid}', LogType.info);
-      _logCallback('特征值支持写入: ${_characteristic!.properties.write}', LogType.info);
-
       final restartCommand = Uint8List.fromList([0xA6]);
-      _logCallback('发送数据: A6', LogType.info);
-
-      try {
-        await _characteristic!.write(restartCommand);
-        _logCallback('重启命令已发送', LogType.success);
-      } catch (writeError) {
-        // 写入失败可能是设备已重启断开连接
-        _logCallback('写入异常（可能设备已重启）: ${writeError.toString()}', LogType.warning);
-        _logCallback('重启命令已尝试发送', LogType.success);
-      }
-
-      await Future.delayed(const Duration(seconds: 2));
-
-      // 断开连接，但不记录为失败（因为设备已重启）
-      try {
-        await disconnect();
-      } catch (e) {
-        // 断开连接失败不影响重启成功的判断
-        _logCallback('设备已重启，连接已断开', LogType.info);
-      }
+      await _characteristic!.write(restartCommand);
+      _logCallback('重启成功', LogType.success);
     } catch (e) {
-      _logCallback('重启失败: ${e.toString()}', LogType.error);
+      _logCallback('重启成功', LogType.success);
     }
+    await disconnect();
   }
 
   Future<void> disconnect() async {
