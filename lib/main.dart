@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:typed_data';
@@ -33,17 +34,21 @@ class BluetoothManager {
   BluetoothCharacteristic? _characteristic;
   bool _isScanning = false;
   bool _isConnected = false;
+  int _scanProgress = 0;
   final Function(String, LogType) _logCallback;
   final Function(bool) _connectionStatusCallback;
   final Function(String) _deviceNameCallback;
+  final Function(int) _scanProgressCallback;
 
   BluetoothManager({
     required Function(String, LogType) logCallback,
     required Function(bool) connectionStatusCallback,
     required Function(String) deviceNameCallback,
+    required Function(int) scanProgressCallback,
   })  : _logCallback = logCallback,
         _connectionStatusCallback = connectionStatusCallback,
-        _deviceNameCallback = deviceNameCallback;
+        _deviceNameCallback = deviceNameCallback,
+        _scanProgressCallback = scanProgressCallback;
 
   Future<bool> requestPermissions() async {
     try {
@@ -78,32 +83,46 @@ class BluetoothManager {
 
   Future<void> startScan() async {
     if (_isScanning) {
-      _logCallback('正在扫描中，请稍候...', LogType.warning);
       return;
     }
 
     try {
       _isScanning = true;
-      _logCallback('开始扫描蓝牙设备...', LogType.info);
 
       await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
 
-      final subscription = FlutterBluePlus.scanResults.listen((results) {
-        for (ScanResult r in results) {
-          if (r.device.platformName.isNotEmpty) {
-            _logCallback('发现设备: ${r.device.platformName}', LogType.info);
-          }
+      // Progress tracking
+      DateTime scanStart = DateTime.now();
+      const scanDuration = Duration(seconds: 15);
+      
+      final progressTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+        final elapsed = DateTime.now().difference(scanStart);
+        final progress = (elapsed.inMilliseconds / scanDuration.inMilliseconds * 100).clamp(0, 100).toInt();
+        _scanProgress = progress;
+        _scanProgressCallback(progress);
+        
+        if (progress >= 100) {
+          timer.cancel();
         }
+      });
+
+      // Don't log device discoveries to keep logs clean
+      final subscription = FlutterBluePlus.scanResults.listen((results) {
+        // Just track results, no logging
       });
 
       await Future.delayed(const Duration(seconds: 15));
       await FlutterBluePlus.stopScan();
       subscription.cancel();
+      progressTimer.cancel();
 
       _isScanning = false;
-      _logCallback('扫描完成，请选择设备', LogType.success);
+      _scanProgress = 100;
+      _scanProgressCallback(100);
     } catch (e) {
       _isScanning = false;
+      _scanProgress = 0;
+      _scanProgressCallback(0);
       _logCallback('扫描失败: ${e.toString()}', LogType.error);
     }
   }
@@ -273,6 +292,7 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
   bool _isConnected = false;
   String _deviceName = '--';
   bool _isScanning = false;
+  int _scanProgress = 0;
 
   @override
   void initState() {
@@ -287,6 +307,11 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
       deviceNameCallback: (name) {
         setState(() {
           _deviceName = name;
+        });
+      },
+      scanProgressCallback: (progress) {
+        setState(() {
+          _scanProgress = progress;
         });
       },
     );
@@ -331,57 +356,119 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
   Future<void> _startScan() async {
     setState(() {
       _isScanning = true;
+      _scanProgress = 0;
     });
+
+    // Show device dialog immediately
+    _showDeviceList();
 
     await _bluetoothManager.startScan();
 
     setState(() {
       _isScanning = false;
     });
-
-    _showDeviceList();
   }
 
   void _showDeviceList() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('选择设备'),
+        title: Row(
+          children: [
+            const Text('选择设备'),
+            const Spacer(),
+            if (_isScanning)
+              Text('扫描中... $_scanProgress%', 
+                style: const TextStyle(fontSize: 12, color: Colors.grey))
+          ],
+        ),
         content: SizedBox(
           width: double.maxFinite,
-          height: 300,
-          child: StreamBuilder<List<ScanResult>>(
-            stream: FlutterBluePlus.scanResults,
-            initialData: const [],
-            builder: (context, snapshot) {
-              if (snapshot.data == null || snapshot.data!.isEmpty) {
-                return const Center(child: Text('未发现设备'));
-              }
+          height: 350,
+          child: Column(
+            children: [
+              if (_isScanning)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: LinearProgressIndicator(value: _scanProgress / 100),
+                ),
+              Expanded(
+                child: StreamBuilder<List<ScanResult>>(
+                  stream: FlutterBluePlus.scanResults,
+                  initialData: const [],
+                  builder: (context, snapshot) {
+                    if (snapshot.data == null || snapshot.data!.isEmpty) {
+                      return const Center(child: Text(_isScanning ? '正在搜索设备...' : '未发现设备'));
+                    }
 
-              return ListView.builder(
-                itemCount: snapshot.data!.length,
-                itemBuilder: (context, index) {
-                  final result = snapshot.data![index];
-                  final deviceName = result.device.platformName.isNotEmpty
-                      ? result.device.platformName
-                      : '未知设备';
+                    return ListView.builder(
+                      itemCount: snapshot.data!.length,
+                      itemBuilder: (context, index) {
+                        final result = snapshot.data![index];
+                        final deviceName = result.device.platformName.isNotEmpty
+                            ? result.device.platformName
+                            : '未知设备';
+                        
+                        // Signal strength color
+                        Color signalColor;
+                        String signalText;
+                        if (result.rssi >= -60) {
+                          signalColor = Colors.green;
+                          signalText = '强';
+                        } else if (result.rssi >= -75) {
+                          signalColor = Colors.yellow[700] ?? Colors.yellow;
+                          signalText = '中';
+                        } else if (result.rssi >= -90) {
+                          signalColor = Colors.orange;
+                          signalText = '弱';
+                        } else {
+                          signalColor = Colors.red;
+                          signalText = '极弱';
+                        }
 
-                  return ListTile(
-                    title: Text(deviceName),
-                    subtitle: Text(result.device.remoteId.toString()),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _connectToDevice(result.device.remoteId.toString());
-                    },
-                  );
-                },
-              );
-            },
+                        return ListTile(
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: signalColor.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.bluetooth,
+                              color: signalColor,
+                            ),
+                          ),
+                          title: Text(deviceName),
+                          subtitle: Row(
+                            children: [
+                              Text('${result.rssi} dBm', style: const TextStyle(fontSize: 12)),
+                              const SizedBox(width: 4),
+                              Text('| $signalText', 
+                                style: TextStyle(fontSize: 12, color: signalColor)),
+                            ],
+                          ),
+                          onTap: () {
+                            Navigator.pop(context);
+                            _connectToDevice(result.device.remoteId.toString());
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              if (_isScanning) {
+                _bluetoothManager.disconnect();
+              }
+              Navigator.pop(context);
+            },
             child: const Text('取消'),
           ),
         ],
@@ -528,7 +615,7 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.search),
-              label: Text(_isScanning ? '扫描中...' : '扫描设备'),
+              label: Text(_isScanning ? '扫描中... $_scanProgress%' : '扫描设备'),
             ),
             const SizedBox(height: 8),
             ElevatedButton.icon(
