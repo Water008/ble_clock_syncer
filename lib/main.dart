@@ -219,7 +219,14 @@ class BluetoothManager {
       _logCallback('重启命令已发送', LogType.success);
 
       await Future.delayed(const Duration(seconds: 2));
-      await disconnect();
+
+      // 断开连接，但不记录为失败（因为设备已重启）
+      try {
+        await disconnect();
+      } catch (e) {
+        // 断开连接失败不影响重启成功的判断
+        _logCallback('设备已重启', LogType.info);
+      }
     } catch (e) {
       _logCallback('重启失败: ${e.toString()}', LogType.error);
     }
@@ -277,7 +284,7 @@ class BluetoothClockPage extends StatefulWidget {
 class _BluetoothClockPageState extends State<BluetoothClockPage> {
   late BluetoothManager _bluetoothManager;
   final List<LogEntry> _logs = [];
-  final TextEditingController _offsetController = TextEditingController(text: '50');
+  final TextEditingController _offsetController = TextEditingController(text: '0');
   final ScrollController _logScrollController = ScrollController();
 
   bool _isConnected = false;
@@ -438,13 +445,6 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
     );
   }
 
-  void _setQuickOffset(int seconds) {
-    setState(() {
-      _offsetController.text = seconds.toString();
-    });
-    _addLog('时间偏移已设置为 ${seconds > 0 ? '+' : ''}$seconds 秒', LogType.info);
-  }
-
   void _clearOffset() {
     setState(() {
       _offsetController.text = '0';
@@ -592,23 +592,6 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
               ],
             ),
             const SizedBox(height: 16),
-            const Text('快捷设置:', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _buildQuickOffsetButton(-60),
-                _buildQuickOffsetButton(-30),
-                _buildQuickOffsetButton(-10),
-                _buildQuickOffsetButton(0),
-                _buildQuickOffsetButton(10),
-                _buildQuickOffsetButton(30),
-                _buildQuickOffsetButton(50),
-                _buildQuickOffsetButton(60),
-              ],
-            ),
-            const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: _isConnected ? _syncTime : null,
               icon: const Icon(Icons.sync),
@@ -620,14 +603,6 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildQuickOffsetButton(int seconds) {
-    final label = seconds >= 0 ? '+${seconds}s' : '${seconds}s';
-    return OutlinedButton(
-      onPressed: () => _setQuickOffset(seconds),
-      child: Text(label),
     );
   }
 
