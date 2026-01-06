@@ -16,6 +16,8 @@ jobs:
       # Disable Maven Central access to avoid 403 errors in GitHub Actions
       GRADLE_OPTS: "-Dorg.gradle.dependency.verification.mode=off"
       GRADLE_USER_HOME: "${{ github.workspace }}/.gradle"
+      # Block Maven Central URLs to prevent any access attempts
+      NO_MAVEN_CENTRAL: "true"
 
     steps:
       - name: Checkout code

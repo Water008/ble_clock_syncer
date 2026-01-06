@@ -19,6 +19,17 @@ pluginManagement {
     }
 }
 
+// Force Aliyun mirrors for buildscript level to prevent Maven Central access
+buildscript {
+    repositories {
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+        maven { url 'https://jitpack.io' }
+        google()
+    }
+}
+
 plugins {
     id "dev.flutter.flutter-plugin-loader" version "1.0.0"
     id "com.android.application" version "8.1.0" apply false
