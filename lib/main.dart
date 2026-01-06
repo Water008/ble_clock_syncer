@@ -34,7 +34,6 @@ class BluetoothManager {
   BluetoothCharacteristic? _characteristic;
   bool _isScanning = false;
   bool _isConnected = false;
-  int _scanProgress = 0;
   final Function(String, LogType) _logCallback;
   final Function(bool) _connectionStatusCallback;
   final Function(String) _deviceNameCallback;
@@ -98,7 +97,6 @@ class BluetoothManager {
       final progressTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
         final elapsed = DateTime.now().difference(scanStart);
         final progress = (elapsed.inMilliseconds / scanDuration.inMilliseconds * 100).clamp(0, 100).toInt();
-        _scanProgress = progress;
         _scanProgressCallback(progress);
         
         if (progress >= 100) {
@@ -117,11 +115,9 @@ class BluetoothManager {
       progressTimer.cancel();
 
       _isScanning = false;
-      _scanProgress = 100;
       _scanProgressCallback(100);
     } catch (e) {
       _isScanning = false;
-      _scanProgress = 0;
       _scanProgressCallback(0);
       _logCallback('扫描失败: ${e.toString()}', LogType.error);
     }
@@ -398,7 +394,7 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
                   initialData: const [],
                   builder: (context, snapshot) {
                     if (snapshot.data == null || snapshot.data!.isEmpty) {
-                      return const Center(child: Text(_isScanning ? '正在搜索设备...' : '未发现设备'));
+                      return Center(child: Text(_isScanning ? '正在搜索设备...' : '未发现设备'));
                     }
 
                     return ListView.builder(
