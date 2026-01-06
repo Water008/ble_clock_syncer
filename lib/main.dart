@@ -251,11 +251,6 @@ class BluetoothManager {
       syncTime.year - 2000,
     ]);
   }
-
-  String _formatDataPacket(Uint8List data) {
-    return data.map((byte) => byte.toRadixString(16).toUpperCase().padLeft(2, '0')).join(' ');
-  }
-
   bool get isConnected => _isConnected;
   bool get isScanning => _isScanning;
 }
