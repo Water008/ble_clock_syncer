@@ -5,12 +5,9 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
-
-    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
 
     <application
-        android:label="@string/app_name"
+        android:label="ble_clock_syncer"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
