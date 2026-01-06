@@ -18,6 +18,8 @@ jobs:
       GRADLE_USER_HOME: "${{ github.workspace }}/.gradle"
       # Block Maven Central URLs to prevent any access attempts
       NO_MAVEN_CENTRAL: "true"
+      # Force disable Maven Central repositories
+      GRADLE_REPOS_BLOCKING: "repo.maven.apache.org,repo1.maven.org,maven2.org"
 
     steps:
       - name: Checkout code
