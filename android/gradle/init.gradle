@@ -4,7 +4,8 @@ allprojects {
             if (repo instanceof MavenArtifactRepository) {
                 // Remove Maven Central
                 if (repo.url.toString().contains('repo.maven.apache.org') ||
-                    repo.url.toString().contains('repo1.maven.org')) {
+                    repo.url.toString().contains('repo1.maven.org') ||
+                    repo.url.toString().contains('maven2.org')) {
                     project.logger.lifecycle("Removing repository: ${repo.url}")
                     remove repo
                 }
@@ -19,8 +20,8 @@ gradle.beforeProject { project ->
         maven { url 'https://maven.aliyun.com/repository/google' }
         maven { url 'https://maven.aliyun.com/repository/public' }
         maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+        maven { url 'https://maven.aliyun.com/repository/jcenter' }
         maven { url 'https://jitpack.io' }
-        google()
-        // Do NOT add mavenCentral() to avoid 403 errors in GitHub Actions
+        // Do NOT add google() or mavenCentral() to avoid 403 errors in GitHub Actions
     }
 }
