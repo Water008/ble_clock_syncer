@@ -296,8 +296,6 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
   final TextEditingController _offsetController = TextEditingController(text: '0');
 
   bool _isConnected = false;
-  Timer? _scanTimer;
-  StreamSubscription? _scanSubscription;
   String _deviceName = '--';
   bool _isScanning = false;
 
@@ -442,7 +440,7 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
                   initialData: const [],
                   builder: (context, snapshot) {
                     if (snapshot.data == null || snapshot.data!.isEmpty) {
-                      return const Center(child: Text(_isScanning ? '正在搜索设备...' : '未发现设备'));
+                      return Center(child: Text(_isScanning ? '正在搜索设备...' : '未发现设备'));
                     }
 
                     return ListView.builder(
