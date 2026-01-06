@@ -324,24 +324,34 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
 
   void _addLog(String message, LogType type) {
     Color backgroundColor;
+    Color iconColor;
     Color textColor;
+    IconData iconData;
 
     switch (type) {
       case LogType.info:
-        backgroundColor = Colors.blue.shade100;
+        backgroundColor = Colors.blue.shade50;
+        iconColor = Colors.blue.shade600;
         textColor = Colors.blue.shade900;
+        iconData = Icons.info_outline;
         break;
       case LogType.success:
-        backgroundColor = Colors.green.shade100;
+        backgroundColor = Colors.green.shade50;
+        iconColor = Colors.green.shade600;
         textColor = Colors.green.shade900;
+        iconData = Icons.check_circle_outline;
         break;
       case LogType.warning:
-        backgroundColor = Colors.orange.shade100;
+        backgroundColor = Colors.orange.shade50;
+        iconColor = Colors.orange.shade600;
         textColor = Colors.orange.shade900;
+        iconData = Icons.warning_amber_outlined;
         break;
       case LogType.error:
-        backgroundColor = Colors.red.shade100;
+        backgroundColor = Colors.red.shade50;
+        iconColor = Colors.red.shade600;
         textColor = Colors.red.shade900;
+        iconData = Icons.error_outline;
         break;
     }
 
@@ -350,17 +360,45 @@ class _BluetoothClockPageState extends State<BluetoothClockPage> {
         SnackBar(
           behavior: SnackBarBehavior.floating,
           margin: EdgeInsets.only(
-            bottom: MediaQuery.of(context).size.height - 100,
+            bottom: MediaQuery.of(context).size.height - 70,
             left: 20,
             right: 20,
           ),
-          width: 400,
-          content: Text(
-            message,
-            style: TextStyle(color: textColor),
+          width: null,
+          constraints: const BoxConstraints(
+            minWidth: 100,
+            maxWidth: 280,
+            minHeight: 48,
           ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          elevation: 4,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           backgroundColor: backgroundColor,
           duration: const Duration(seconds: 2),
+          content: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                iconData,
+                color: iconColor,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  message,
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 14,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
