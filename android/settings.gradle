@@ -1,3 +1,20 @@
+// Global init script: Block ALL Maven Central repositories
+allprojects {
+    repositories {
+        all { ArtifactRepository repo ->
+            if (repo instanceof MavenArtifactRepository) {
+                // Block ALL Maven Central URLs
+                if (repo.url.toString().contains('repo.maven.apache.org') ||
+                    repo.url.toString().contains('repo1.maven.org') ||
+                    repo.url.toString().contains('maven2.org')) {
+                    project.logger.lifecycle("BLOCKING Maven Central repository: ${repo.url}")
+                    remove repo
+                }
+            }
+        }
+    }
+}
+
 pluginManagement {
     def flutterSdkPath = {
         def properties = new Properties()
@@ -29,10 +46,6 @@ buildscript {
         google()
     }
 }
-
-// Apply global block script to intercept and remove Maven Central repositories
-apply from: 'block-maven-central.gradle'
-
 
 plugins {
     id "dev.flutter.flutter-plugin-loader" version "1.0.0"
